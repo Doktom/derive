@@ -50,10 +50,28 @@ Paisible (aucune attaque, mémoire ×0,75), Rude (débloquée d'office, ×1,25),
 ## 6. Technique
 HTML/CSS/JS sans dépendance, objet global `G`, données dans `js/data`, moteur dans `js/core`, affichage dans `js/ui`. Sauvegarde automatique (10 s) dans `localStorage` (`derive_save_v1`). Hors ligne : jusqu'à 2 h simulées, en pilote automatique, sans parasites.
 
+## V0.2 — améliorations et version 3D 🤖
+**Corrections**
+- Clics perdus : l'interface se réécrivait 4 fois par seconde et pouvait remplacer le bouton entre l'appui et le relâchement. Le DOM est figé tant qu'un bouton de souris est enfoncé (`pointerHeld`, `ui.js`).
+- La bête de démonstration de l'écran de départ n'est plus sauvegardée (`state.save`).
+- `_grid` n'est plus écrite dans la sauvegarde. Migration souple dans `state.migrate`.
+- Infobulles : plus d'infobulle fantôme quand l'élément survolé est remplacé.
+
+**Profondeur**
+- **Rencontres** (`js/data/events.js`, `chronicle.js`) : 12 décisions à choix toutes les 4 à 6 min, jamais pendant une vague. Effets temporaires affichés à gauche (`run.timed`).
+- **Mutations** : chaque Colosse naît avec un caractère parmi 8 (bosse, cicatrices = cases mortes, sang épais, longues pattes…).
+- **Savoirs sans fin** (`G.INFINITE`) : 5 recherches répétables (coût ×1,45), ouvertes par la première technologie ⭐. Elles donnent un débouché aux récits.
+- Les bâtiments abîmés se réparent lentement hors des vagues (1 % par seconde).
+
+**Confort** : cible réglable aussi sur les harpons, « Monter les N », liens fournisseurs (bleu) / clients (orange) du bâtiment sélectionné, conseils sur le fourrage et la première vague.
+
+**Version 3D** (`3d.html`, `js/ui/render3d.js`) : second moteur de rendu au même contrat que `render.js` (`init, resize, fit, draw, screenToTile, screenToWorld, shake, pan, zoomAt, cam, dayDark`). Caméra orthographique (azimut 0,56 rad, élévation 0,66 rad), facettes à couleurs par sommet, carapace bombée (`surface()`), ombres portées, jour et nuit par la lumière. Modèles assemblés par `Kit` (primitives fusionnées) ; unités, cargaisons et câbles en `InstancedMesh`. Mesure : 9 ms par image, 27 000 à 32 000 triangles, 110 à 140 appels de dessin (Radeon RX 6700 XT).
+
+**Mesures du bot (V0.2, petit échantillon)** 🧪 : Paisible 2 triomphes sur 2 (51 à 54 min) ; Rude 3 triomphes sur 5 (51 à 55 min) ; Sauvage 1 sur 2. Sauvage est peut-être devenu trop accessible : à vérifier.
+
 ## Points ouverts ❓ / pistes 💡
 - 🧪 Rythme et lisibilité pour un joueur humain (le bot est naïf).
-- 💡 Les récits s'accumulent en fin de région (plus rien à rechercher) : nouvelles dépenses (rituels, cartes de route révélées, relances de pacte).
-- 💡 V1 : espèces de Colosse (Carapace, Arpenteur, Baleine des dunes, Bélier), mutations, régions 3 à 5 (Mer de verre, Terres d'orage, Cimetière), Légende ✨ et Totems (maîtrise ×n), pillards volants, passerelles et tyroliennes, Grand Envol, biomes infinis au-delà de la Brume.
+- 💡 V1 : espèces de Colosse (Carapace, Arpenteur, Baleine des dunes, Bélier), régions 3 à 5 (Mer de verre, Terres d'orage, Cimetière), Légende ✨ et Totems (maîtrise ×n), pillards volants, passerelles et tyroliennes, Grand Envol, biomes infinis au-delà de la Brume.
 - 💡 Nuit qui compte (lanternes), météo (tempête de sable, orage).
 - 💡 Export / import de sauvegarde, emplacements multiples.
 - ❓ Nom définitif.

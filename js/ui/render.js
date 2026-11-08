@@ -318,6 +318,11 @@ G.render = (function () {
         ctx.fillStyle = spine ? 'rgba(235,220,180,0.22)' : flank ? 'rgba(60,45,25,0.18)' : 'rgba(255,245,215,' + (0.06 + n * 0.08) + ')';
         roundRect(x + 0.07, y + 0.07, 0.86, 0.86, 0.22); ctx.fill();
         ctx.strokeStyle = 'rgba(60,45,25,0.16)'; ctx.lineWidth = 0.03; ctx.stroke();
+        if (G.beast.isScar(x, y)) {
+          ctx.fillStyle = 'rgba(45,30,20,0.55)'; roundRect(x + 0.1, y + 0.1, 0.8, 0.8, 0.2); ctx.fill();
+          ctx.strokeStyle = 'rgba(200,170,140,0.55)'; ctx.lineWidth = 0.05;
+          ctx.beginPath(); ctx.moveTo(x + 0.25, y + 0.25); ctx.lineTo(x + 0.75, y + 0.75); ctx.moveTo(x + 0.7, y + 0.28); ctx.lineTo(x + 0.3, y + 0.72); ctx.stroke();
+        }
         if (n > 0.86 && !spine) { ctx.fillStyle = 'rgba(110,140,70,0.35)'; ctx.beginPath(); ctx.arc(x + 0.3 + n * 0.3, y + 0.6, 0.12, 0, 7); ctx.fill(); }
       }
     }
@@ -510,7 +515,16 @@ G.render = (function () {
       const t = type || (ui.sel && ui.sel.x === h.x && ui.sel.y === h.y ? ui.sel.type : null);
       if (type) rangeCircle(type, h.x, h.y, 1);
     }
-    if (ui.sel && !ui.sel.ruined) rangeCircle(ui.sel.type, ui.sel.x, ui.sel.y, ui.sel.level);
+    if (ui.sel && !ui.sel.ruined) {
+      rangeCircle(ui.sel.type, ui.sel.x, ui.sel.y, ui.sel.level);
+      // Chaîne de production : fournisseurs en bleu, clients en orange.
+      ctx.lineWidth = 0.05; ctx.lineCap = 'round'; ctx.setLineDash([0.18, 0.12]);
+      for (const r of G.logic.relations(ui.sel)) {
+        ctx.strokeStyle = r.supplier ? 'rgba(90,150,210,0.85)' : 'rgba(225,140,60,0.85)';
+        ctx.beginPath(); ctx.moveTo(ui.sel.x + 0.5, ui.sel.y + 0.5); ctx.lineTo(r.x + 0.5, r.y + 0.5); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
   }
   function rangeCircle(type, x, y, level) {
     const d = G.BUILDINGS[type];

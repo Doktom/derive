@@ -21,6 +21,7 @@ G.beast = (function () {
     if (veinRun !== G.run) { veinSet = {}; for (const k of G.run.veins) veinSet[k] = 1; veinRun = G.run; }
     return !!veinSet[x + ',' + y] && inBack(x, y);
   }
+  function isScar(x, y) { return (G.run.scars || []).includes(x + ',' + y); }
   function side(x) { return x < G.run.cx ? -1 : x > G.run.cx ? 1 : 0; }
 
   function vigMax() { return B().vigueur + (G.M.vigMax || 0); }
@@ -87,5 +88,5 @@ G.beast = (function () {
     return true;
   }
 
-  return { hw, inBack, isFlank, isSpine, isHeart, isVein, side, vigMax, pace, speed, drain, growthCost, tick, canShake, shake };
+  return { hw, inBack, isFlank, isSpine, isHeart, isVein, isScar, side, vigMax, pace, speed, drain, growthCost, tick, canShake, shake };
 })();

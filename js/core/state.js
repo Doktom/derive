@@ -40,12 +40,27 @@ G.state = (function () {
     const r = G.util.rng(seed);
     const lvl = id => meta.heritage[id] || 0;
     const W = B.maxHW * 2 + 1, cx = B.maxHW;
-    const L = B.startLen + lvl('h_echine');
+    const mutIds = Object.keys(G.MUTATIONS);
+    const mutId = mutIds[Math.floor(r() * mutIds.length)], mut = G.MUTATIONS[mutId];
+    const L = B.startLen + lvl('h_echine') + (mut.startLen || 0);
     const heartY = Math.round(L * 0.45);
+    let veins = makeVeins(r, cx, heartY, B.maxLen, B.maxHW);
+    if (mut.richVeins) veins = Array.from(new Set(veins.concat(makeVeins(r, cx, heartY, B.maxLen, B.maxHW))));
+    // Cicatrices : cases mortes, jamais près de la Nuque ni sur le cœur.
+    const scars = [];
+    for (let i = 0, guard = 0; i < (mut.scars || 0) && guard < 200; guard++) {
+      const y = 3 + Math.floor(r() * (L - 4));
+      const h = Math.max(0, Math.min(B.maxHW, Math.floor(2 + y * 1.5), Math.floor(1 + (L - 1 - y) * 1.2)));
+      const x = cx - h + Math.floor(r() * (2 * h + 1));
+      const k = x + ',' + y;
+      if (scars.includes(k) || (x === cx && y === heartY)) continue;
+      scars.push(k); i++;
+    }
     const run = {
       v: G.SAVE_V, seed, time: 0, rig: rig || 0, region: 0,
       W, cx, L, heart: { x: cx, y: heartY },
-      veins: makeVeins(r, cx, heartY, B.maxLen, B.maxHW),
+      mutation: mutId, scars, timed: [], infLv: {}, nextEvent: 240,
+      veins,
       buildings: [], nextBid: 1, transit: [],
       deposits: [], nextDid: 1, travel: 0, stepDist: 0, spawnAcc: 0,
       route: null,
@@ -77,10 +92,22 @@ G.state = (function () {
     return b;
   }
 
+  // Complète une partie ou une méta issues d'une sauvegarde plus ancienne.
+  function migrate(run, meta) {
+    if (meta) meta.maxRig = Math.max(1, meta.maxRig || 0);
+    if (!run) return;
+    run.timed = run.timed || [];
+    run.infLv = run.infLv || {};
+    run.scars = run.scars || [];
+    run.mutation = run.mutation || null;
+    if (run.nextEvent === undefined) run.nextEvent = run.time + 240;
+  }
+
   function save() {
     if (!G.meta || G.wiping) return;
     try {
-      localStorage.setItem(G.SAVE_KEY, JSON.stringify({ v: G.SAVE_V, meta: G.meta, run: G.run, savedAt: Date.now() }));
+      // _grid référence tous les bâtiments : inutile (recalculée) et elle doublerait la sauvegarde.
+      localStorage.setItem(G.SAVE_KEY, JSON.stringify({ v: G.SAVE_V, meta: G.meta, run: G.run && G.run.demo ? null : G.run, savedAt: Date.now() }, (k, v) => k === '_grid' ? undefined : v));
     } catch (e) { console.warn('Sauvegarde impossible', e); }
   }
 
@@ -98,5 +125,5 @@ G.state = (function () {
     location.reload();
   }
 
-  return { newMeta, newRun, mkBuilding, save, load, wipe };
+  return { newMeta, newRun, mkBuilding, migrate, save, load, wipe };
 })();

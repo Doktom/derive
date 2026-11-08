@@ -123,6 +123,8 @@ G.economy = (function () {
       if (b.ruined) { b._eff = 0; b._st = 'ruine'; continue; }
       const eff = b.paused ? 0 : (d.jobs ? wf : 1);
       b._eff = eff; b._st = b.paused ? 'pause' : '';
+      // Hors des vagues, les habitants retapent peu à peu ce qui est abîmé (1 % par seconde).
+      if (!run.enemies.length) { const mh = G.logic.maxHp(b); if (b.hp < mh) b.hp = Math.min(mh, b.hp + mh * 0.01 * dt); }
       const k = lm(b) * veinMult(b);
 
       if (d.consume && b.type !== 'nuque') {
@@ -180,7 +182,7 @@ G.economy = (function () {
           for (const r in ammo) if ((b.inp[r] || 0) < ammo[r]) ok = false;
           if (!ok) { b._st = 'munitions'; b.cd = 0; }
           else {
-            const c = inRangeDeposits(b, reachOf(b), x => G.RESOURCES[x.res].abstract || outSpace(b, x.res) > 2);
+            const c = inRangeDeposits(b, reachOf(b), x => (!b.filter || x.res === b.filter) && (G.RESOURCES[x.res].abstract || outSpace(b, x.res) > 2));
             const pref = x => (G.DEPOSITS[x.type].harpoonOnly ? 1000 : 0) + (G.DEPOSITS[x.type].big ? 500 : 0) + (x.res === 'recits' ? 300 : 0) + x.amt;
             const t = c.sort((a, z) => pref(z) - pref(a))[0];
             if (t) {
@@ -198,6 +200,7 @@ G.economy = (function () {
     G.logistics.update(dt);
     G.beast.tick(dt);
     G.world.tick(dt, G.beast.speed() * dt);
+    G.chronicle.update();
     flushFlow(dt);
   }
 

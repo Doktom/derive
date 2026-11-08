@@ -76,6 +76,14 @@ h1, h2, h3, h4 { font-family: Fraunces, Georgia, serif; font-weight: 700; margin
 .advice { margin-top: 12px; padding: 9px 10px; background: #fff7e3; border: 1px solid #ecd59c; border-radius: var(--r); font-size: 12.5px; }
 .advice b { display: block; font-family: Fraunces, serif; color: var(--accent); margin-bottom: 2px; }
 
+.mutation, .timed { margin-top: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--panel2); font-size: 12.5px; }
+.mutation small, .timed small { color: var(--muted); }
+.mutation small { display: block; }
+.mutation b { font-family: Fraunces, serif; color: #6b4a2b; }
+.timed ul { margin: 3px 0 0; padding: 0; list-style: none; }
+.timed li { display: flex; justify-content: space-between; gap: 6px; }
+.choice-cost { display: flex; gap: 5px; }
+
 /* Droite */
 #tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
 .tab { position: relative; border: 0; background: none; padding: 9px 2px 7px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; }

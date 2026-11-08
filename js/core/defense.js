@@ -113,7 +113,7 @@ G.defense = (function () {
         run.fx.push({ k: 'mort', x1: e.x, y1: e.y, t: run.time, life: 0.6 });
         continue;
       }
-      if (G.beast.inBack(Math.floor(e.x), Math.floor(e.y))) run.vigueur -= def.drain * dt;
+      if (G.beast.inBack(Math.floor(e.x), Math.floor(e.y))) run.vigueur -= def.drain * Math.max(0.1, 1 + (G.M.tickDrain || 0)) * dt;
       if (e.soldier && e.soldier.dead <= run.time && Math.hypot(e.soldier.x - e.x, e.soldier.y - e.y) < 0.8) continue; // bloqué
       e.soldier = null;
       let t = e.tgt ? run.buildings.find(b => b.bid === e.tgt && !b.ruined) : null;

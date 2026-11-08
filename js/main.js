@@ -24,10 +24,12 @@
     const saved = G.state.load();
     G.meta = (saved && saved.meta) || G.state.newMeta();
     G.meta.settings = Object.assign({ lore: true, rateUnit: 'min' }, G.meta.settings || {});
+    G.state.migrate(null, G.meta);
     G.render.init(document.getElementById('map'));
     G.ui.bind();
     if (saved && saved.run && !saved.run.ended) {
       G.run = saved.run;
+      G.state.migrate(G.run, G.meta);
       G.mods.compute();
       G.economy.rebuildGrid();
       G.logistics.totals();

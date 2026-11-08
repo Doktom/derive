@@ -69,7 +69,11 @@ G.ui = (function () {
     }).join('');
     setHTML($('resources'), `<h3>Ressources</h3>${rows}`);
     const adv = G.logic.advice();
-    setHTML($('hint'), adv ? `<div class="advice"><b>Conseil</b>${adv}</div>` : '');
+    const mut = run.mutation && G.MUTATIONS[run.mutation];
+    const fx = (run.timed || []).map(t => `<li><b>${t.name}</b> <small>${U.fmtTime(t.until - run.time)}</small></li>`).join('');
+    setHTML($('hint'), (adv ? `<div class="advice"><b>Conseil</b>${adv}</div>` : '') +
+      (mut ? `<div class="mutation" data-tip="${mut.desc}"><small>Cette bête</small><b>${mut.name}</b></div>` : '') +
+      (fx ? `<div class="timed"><small>En ce moment</small><ul>${fx}</ul></div>` : ''));
   }
 
   // ---- Onglets ----
@@ -115,6 +119,15 @@ G.ui = (function () {
           ${st === 'done' ? '<span class="ok">✔</span>' : `<button class="btn sm" data-action="research:${id}" ${st === 'ready' ? '' : 'disabled'}>${resIc('recits')}${t.cost}</button>`}
         </div>`;
       }
+    }
+    h += `<h4>Savoirs sans fin</h4>`;
+    if (!G.logic.infOpen()) h += `<p class="muted small">S'ouvrent avec ${G.TECHS[G.REGIONS[0].pass.tech].name}. Ces recherches se répètent sans limite, de plus en plus chères.</p>`;
+    else for (const id in G.INFINITE) {
+      const it = G.INFINITE[id];
+      if (it.waves && !G.defense.wavesOn()) continue;
+      const c = G.logic.infCost(id), lv = run.infLv[id] || 0, ok = run.recits >= c;
+      h += `<div class="tech ${ok ? 'ready' : 'poor'}"><div><b>${it.name}</b> <small>niv. ${lv}</small><p>${it.desc}</p></div>
+        <button class="btn sm" data-action="inf:${id}" ${ok ? '' : 'disabled'}>${resIc('recits')}${U.fmt(c, 0)}</button></div>`;
     }
     return h;
   }
@@ -204,9 +217,9 @@ G.ui = (function () {
       return ks.length ? `<div class="stock"><small>${title}</small>${ks.map(r => `<span>${resIc(r)}${U.fmt(o[r])}</span>`).join('')}</div>` : '';
     };
     h += stock('Entrée', b.inp) + stock('Sortie', b.out) + (b.store ? stock('Réserve', b.store) : '');
-    if (d.harvest) {
+    if (d.harvest || d.harpoon) {
       const rs = [];
-      for (const k in G.DEPOSITS) { const dp = G.DEPOSITS[k]; if (dp.region <= run.region && !dp.harpoonOnly && !rs.includes(dp.res)) rs.push(dp.res); }
+      for (const k in G.DEPOSITS) { const dp = G.DEPOSITS[k]; if (dp.region <= run.region && (d.harpoon || !dp.harpoonOnly) && !rs.includes(dp.res)) rs.push(dp.res); }
       h += `<div class="filter"><small>Cible</small><button class="btn sm ${!b.filter ? 'on' : ''}" data-action="filter:" data-tip="Automatique : ce qui manque le plus">Auto</button>` +
         rs.map(r => `<button class="btn sm ${b.filter === r ? 'on' : ''}" data-action="filter:${r}" data-tip="${G.RESOURCES[r].name} seulement">${resIc(r)}</button>`).join('') + '</div>';
     }
@@ -217,8 +230,11 @@ G.ui = (function () {
     if (b.ruined) h += `<button class="btn primary" data-action="repair">Réparer ${costHtml(G.logic.repairCost(b))}</button>`;
     else {
       const le = G.logic.levelError(b);
-      if (!le) h += `<button class="btn primary" data-action="levelUp" ${G.logistics.canPay(G.logic.levelCost(b)) ? '' : 'disabled'}>Niveau ${b.level + 1} ${costHtml(G.logic.levelCost(b))}</button>`;
-      else if (d.cost) h += `<p class="small muted">${le}</p>`;
+      if (!le) {
+        h += `<button class="btn primary" data-action="levelUp" ${G.logistics.canPay(G.logic.levelCost(b)) ? '' : 'disabled'}>Niveau ${b.level + 1} ${costHtml(G.logic.levelCost(b))}</button>`;
+        const peers = G.logic.levelPeers(b).length;
+        if (peers > 1) h += `<button class="btn" data-action="levelAll" ${G.logistics.canPay(G.logic.levelCost(b)) ? '' : 'disabled'} data-tip="Monte tous les bâtiments de ce type et de ce niveau, tant que les stocks suivent.">Monter les ${peers}</button>`;
+      } else if (d.cost) h += `<p class="small muted">${le}</p>`;
       if (b.type !== 'nuque') {
         h += `<button class="btn" data-action="togglePause">${b.paused ? 'Reprendre' : 'Pause'}</button>`;
         h += `<button class="btn" data-action="prio">Priorité : ${['basse', 'normale', 'haute'][b.prio]}</button>`;
@@ -247,6 +263,14 @@ G.ui = (function () {
   function pendingModal() {
     const p = G.run.pending[0];
     if (!p || state.modal || G.run.ended || (G.bot && G.bot.active)) return;
+    if (p.kind === 'event') {
+      const ev = G.EVENTS_BY[p.id];
+      openModal(`<h2>${ev.name}</h2><p>${ev.text}</p><div class="choices">${ev.choices.map((c, i) => {
+        const k = G.chronicle.cost(c), ok = G.chronicle.canChoose(c);
+        return `<button class="choice ${ok ? '' : 'locked'}" ${ok ? `data-action="choose:${i}"` : 'disabled'}><b>${c.label}</b><span>${c.desc}</span>${k ? `<em class="choice-cost">${costHtml(k)}</em>` : ''}</button>`;
+      }).join('')}</div>`, { kind: 'pending' });
+      return;
+    }
     const src = p.kind === 'pact' ? G.PACTS : G.OFFERINGS;
     const title = p.kind === 'pact' ? 'Un pacte avec la route' : 'Une offrande du nid';
     const intro = p.kind === 'pact' ? 'Choisissez un pacte. Il durera toute la marche.' : 'Le nid est vidé. Choisissez une offrande.';
@@ -257,7 +281,7 @@ G.ui = (function () {
   function startModal() {
     const meta = G.meta;
     const rigs = G.RIGUEUR.map((r, i) => `<button class="choice ${i > meta.maxRig ? 'locked' : ''}" ${i > meta.maxRig ? 'disabled' : `data-action="newGame:${i}"`}>
-      <b>${r.name}</b><span>${r.desc}</span><em>Mémoire ×${String(r.mem).replace('.', ',')}${i > meta.maxRig ? ' · franchissez une passe pour débloquer' : ''}</em></button>`).join('');
+      <b>${r.name}</b><span>${r.desc}</span><em>Mémoire ×${String(r.mem).replace('.', ',')}${i > meta.maxRig ? ' · franchissez une passe en ' + G.RIGUEUR[i - 1].name + ' pour débloquer' : ''}</em></button>`).join('');
     openModal(`<h1>Dérive</h1><p class="lead">Votre peuple vit sur le dos d'un Colosse qui marche à travers le Monde Ocre.<br>Il marche. Vous construisez.</p>
       <ul class="howto">
         <li>Les <b>gisements défilent</b> le long de ses flancs : posez des <b>grues</b> et des <b>harpons</b> sur le bord du dos pour les attraper au passage.</li>
@@ -284,6 +308,7 @@ G.ui = (function () {
       <label class="row"><input type="checkbox" data-action="setLore" ${s.lore ? 'checked' : ''}> Répliques de Tic</label>
       <label class="row"><input type="checkbox" data-action="setRate" ${s.rateUnit === 'sec' ? 'checked' : ''}> Débits par seconde (sinon par minute)</label>
       <div class="acts">
+        <button class="btn" data-action="version:${G.is3D ? '2d' : '3d'}">${G.is3D ? 'Passer à la version 2D' : 'Passer à la version 3D'}</button>
         <button class="btn" data-action="startScreen">Écran de départ</button>
         <button class="btn" data-action="bot">${G.bot && G.bot.active ? 'Arrêter le mode Bot' : 'Mode Bot (le bot joue)'}</button>
         <button class="btn danger" data-action="wipe">Tout effacer</button>
@@ -329,6 +354,9 @@ G.ui = (function () {
       case 'heritage': G.logic.buyHeritage(arg); break;
       case 'choose': G.logic.choosePending(+arg); closeModal(); break;
       case 'levelUp': if (state.sel) G.logic.levelUp(state.sel); break;
+      case 'levelAll': if (state.sel) { const n = G.logic.levelAll(state.sel); toast(n + ' bâtiment' + (n > 1 ? 's' : '') + ' monté' + (n > 1 ? 's' : '') + ' de niveau.', 'good'); } break;
+      case 'inf': G.logic.buyInf(arg); break;
+      case 'version': G.state.save(); G.wiping = true; location.href = arg === '3d' ? '3d.html' : 'index.html'; break;
       case 'repair': if (state.sel) G.logic.repair(state.sel); break;
       case 'togglePause': if (state.sel) state.sel.paused = !state.sel.paused; break;
       case 'prio': if (state.sel) state.sel.prio = (state.sel.prio + 1) % 3; break;
@@ -402,6 +430,7 @@ G.ui = (function () {
       else {
         const k = [];
         if (G.beast.isHeart(t.x, t.y)) k.push('Cœur du Colosse');
+        if (G.beast.isScar(t.x, t.y)) k.push('Cicatrice : rien n\'y tient');
         if (G.beast.isVein(t.x, t.y)) k.push('Veine : production ×1,4');
         if (G.beast.isFlank(t.x, t.y)) k.push('Flanc : grues et harpons');
         if (G.beast.isSpine(t.x, t.y)) k.push('Échine : défenses +1 portée');
@@ -421,7 +450,22 @@ G.ui = (function () {
   }
   function hideTip() { $('tooltip').style.display = 'none'; }
 
+  // Le DOM est réécrit plusieurs fois par seconde : on le fige tant qu'un bouton de souris est enfoncé,
+  // sinon l'élément cliqué peut être remplacé entre l'appui et le relâchement et le clic se perd.
+  let pointerHeld = false, tipEl = null, mouseX = 0, mouseY = 0;
+  function refreshTip() {
+    if (!tipEl || tipEl.isConnected) return;
+    const el = document.elementFromPoint(mouseX, mouseY);
+    const next = el && el.closest('[data-tip]');
+    if (next) { tipEl = next; $('tooltip').innerHTML = next.dataset.tip; }
+    else { tipEl = null; hideTip(); }
+  }
+
   function bind() {
+    document.addEventListener('pointerdown', e => { pointerHeld = e.target.id !== 'map'; });
+    window.addEventListener('pointerup', () => { pointerHeld = false; });
+    window.addEventListener('blur', () => { pointerHeld = false; });
+    document.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
     document.addEventListener('click', e => {
       const el = e.target.closest('[data-action]');
       if (!el || el.disabled) return;
@@ -431,6 +475,7 @@ G.ui = (function () {
     document.addEventListener('change', e => { const el = e.target.closest('input[data-action]'); if (el) act(el.dataset.action, el); });
     document.addEventListener('mouseover', e => {
       const el = e.target.closest('[data-tip]');
+      tipEl = el || null;
       if (el) showTip(e, el.dataset.tip); else if (e.target.id !== 'map') hideTip();
     });
     document.addEventListener('keydown', e => {
@@ -448,10 +493,11 @@ G.ui = (function () {
   let lastRefresh = 0;
   function refresh(force) {
     const now = performance.now();
-    if (!force && now - lastRefresh < 250) return;
+    if (!force && (pointerHeld || now - lastRefresh < 250)) return;
     lastRefresh = now;
     if (!G.run) return;
     topbar(); resources(); tabs(); panel(); selection();
+    refreshTip();
     pendingModal();
     $('botbar').classList.toggle('hidden', !(G.bot && G.bot.active));
   }

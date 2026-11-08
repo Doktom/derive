@@ -44,6 +44,14 @@ G.bot = (function () {
     // Choix en attente
     while (run.pending.length) {
       const p = run.pending[0];
+      if (p.kind === 'event') {
+        const ev = G.EVENTS_BY[p.id];
+        let idx = ev.choices.findIndex(c => c.cost && G.chronicle.canChoose(c) && !c.fx.gamble);
+        if (idx < 0) idx = ev.choices.findIndex(c => G.chronicle.canChoose(c));
+        G.logic.choosePending(idx);
+        if (G.ui && G.ui.state.modal === 'pending') G.ui.closeModal();
+        continue;
+      }
       const prefer = ['p_paslourd', 'p_bras', 'p_contes', 'p_porteurs', 'p_moisson', 'o_recolte', 'o_vigueur', 'o_croit', 'o_recits'];
       let i = p.options.findIndex(o => prefer.includes(o));
       G.logic.choosePending(Math.max(0, i));
@@ -75,6 +83,9 @@ G.bot = (function () {
     if (ready.length) {
       const key = ready.find(id => G.TECHS[id].key);
       G.logic.research(key || ready.sort((a, b) => G.TECHS[a].cost - G.TECHS[b].cost)[0]);
+    } else if (G.logic.infOpen() && !Object.keys(G.TECHS).some(id => G.logic.techState(id) === 'poor')) {
+      const inf = Object.keys(G.INFINITE).filter(id => !G.INFINITE[id].waves || G.defense.wavesOn()).sort((a, b) => G.logic.infCost(a) - G.logic.infCost(b))[0];
+      G.logic.buyInf(inf);
     }
     // Construction : une ou deux actions par décision.
     const reg = run.region, wf = run._wf;

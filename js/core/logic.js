@@ -28,6 +28,7 @@ G.logic = (function () {
     const d = BD[type];
     if (!G.beast.inBack(x, y)) return "Hors du dos de la bête.";
     if (G.beast.isHeart(x, y)) return "Le cœur du Colosse : on n'y bâtit pas.";
+    if (G.beast.isScar(x, y)) return "Une vieille cicatrice : rien n'y tient.";
     if (G.economy.at(x, y)) return "Case occupée.";
     if (d.flank && !G.beast.isFlank(x, y)) return "Uniquement sur un flanc (le bord du dos).";
     return null;
@@ -153,8 +154,15 @@ G.logic = (function () {
   }
   function queueOffering() { G.run.pending.push({ kind: 'offering', options: pickN(G.OFFERINGS, 3) }); }
   function choosePending(i) {
-    const run = G.run, p = run.pending.shift();
-    if (!p) return;
+    const run = G.run;
+    if (run.pending[0] && run.pending[0].kind === 'event') {
+      const ev = G.EVENTS_BY[run.pending[0].id];
+      if (!G.chronicle.canChoose(ev.choices[i])) return false;
+      run.pending.shift();
+      return G.chronicle.choose(ev, i);
+    }
+    const p = run.pending.shift();
+    if (!p) return false;
     const id = p.options[i];
     if (p.kind === 'pact') run.pacts.push(id);
     else {
@@ -164,6 +172,47 @@ G.logic = (function () {
     }
     G.mods.compute();
     if (p.kind === 'offering' && G.OFFERINGS[id].heal) run.vigueur = G.beast.vigMax();
+    return true;
+  }
+
+  // ---- Savoirs sans fin ----
+  function infOpen() { return G.REGIONS.some((r, i) => i <= G.run.region && G.run.techs.includes(r.pass.tech)); }
+  function infCost(id) { return Math.round(G.INFINITE[id].cost * Math.pow(G.INFINITE_GROW, G.run.infLv[id] || 0)); }
+  function buyInf(id) {
+    if (!infOpen() || G.run.recits < infCost(id)) return false;
+    G.run.recits -= infCost(id);
+    G.run.infLv[id] = (G.run.infLv[id] || 0) + 1;
+    G.mods.compute();
+    return true;
+  }
+
+  // ---- Monter d'un coup tous les bâtiments semblables ----
+  function levelPeers(b) { return G.run.buildings.filter(x => x.type === b.type && x.level === b.level && !levelError(x)); }
+  function levelAll(b) {
+    let n = 0;
+    for (const x of levelPeers(b)) if (levelUp(x)) n++;
+    return n;
+  }
+
+  // ---- Chaîne de production : qui alimente ce bâtiment, qui consomme ce qu'il fait ----
+  function outputs(b) {
+    const d = BD[b.type];
+    if (d.recipe) return Object.keys(d.recipe.out).filter(r => !G.RESOURCES[r].abstract);
+    return Object.keys(b.out).filter(r => b.out[r] > 0.5);
+  }
+  function relations(b) {
+    if (b._rel && b._relT > performance.now() - 1000) return b._rel;
+    const wants = G.economy.wants(b), outs = outputs(b), rel = [];
+    const near = o => Math.hypot(o.x - b.x, o.y - b.y);
+    const others = G.run.buildings.filter(o => o !== b && !o.ruined && !o.store).sort((p, q) => near(p) - near(q));
+    let sup = 0, cli = 0;
+    for (const o of others) {
+      if (sup < 6 && outputs(o).some(r => wants[r])) { rel.push({ x: o.x, y: o.y, supplier: true }); sup++; }
+      const w = G.economy.wants(o);
+      if (cli < 6 && outs.some(r => w[r])) { rel.push({ x: o.x, y: o.y, supplier: false }); cli++; }
+    }
+    b._rel = rel; b._relT = performance.now();
+    return rel;
   }
 
   // ---- Marché des caravanes ----
@@ -234,6 +283,7 @@ G.logic = (function () {
   // ---- Nouvelle partie ----
   function newGame(rig) {
     G.run = G.state.newRun(rig);
+    G.flow = {};
     G.mods.compute();
     G.economy.rebuildGrid();
     G.world.prefill(G.run);
@@ -249,7 +299,10 @@ G.logic = (function () {
     const has = t => run.buildings.some(b => b.type === t);
     if (run.pending.length) return 'Un choix vous attend.';
     if (!has('grue')) return 'Posez une grue sur un flanc (bord du dos) : elle récolte ce qui passe à portée.';
+    const nq = run.buildings.find(b => b.type === 'nuque');
+    if (run.satiete < 55 && (run.res.fourrage || 0) < 8 && nq && (nq.inp.fourrage || 0) < 8) return 'Plus de fourrage en route pour la bête : sélectionnez une grue et réglez sa cible sur le fourrage.';
     if (run.satiete < 30) return 'La bête a faim : il faut du fourrage (prairies) livré à la Nuque. Ralentir réduit sa faim.';
+    if (G.RIGUEUR[run.rig].waves && !has('lanceur') && run.time > 150) return run.techs.includes('t_lanceur') ? 'Posez un lanceur d\'os : des parasites vont grimper.' : 'Recherchez « Balistique des os » avant la première vague (onglet Savoir).';
     if (!has('harpon')) return 'Un harpon sur un flanc chasse les troupeaux : la viande nourrit le fumoir.';
     if (!has('fumoir')) return 'Un fumoir transforme la viande en vivres pour les tentes.';
     if (!has('conteur')) return 'Un cercle de conteurs produit des récits pour la recherche.';
@@ -263,7 +316,7 @@ G.logic = (function () {
   return {
     maxHp, maxLevel, count, unlocked, buildCost, placeError, build, levelCost, levelError, levelUp,
     repairCost, repair, demolish, techState, research, setPace, passReq, passMissing, crossPass,
-    queuePact, queueOffering, choosePending, makeMarket, trade, memoryGain, endRun,
+    queuePact, queueOffering, choosePending, infOpen, infCost, buyInf, levelPeers, levelAll, relations, makeMarket, trade, memoryGain, endRun,
     heritageCost, buyHeritage, newGame, advice
   };
 })();
