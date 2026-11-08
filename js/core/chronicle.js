@@ -61,5 +61,5 @@ G.chronicle = (function () {
     run.nextEvent = run.time + G.EVENT_GAP[0] + Math.random() * (G.EVENT_GAP[1] - G.EVENT_GAP[0]);
   }
 
-  return { update, cost, canChoose, choose };
+  return { update, cost, canChoose, choose, applyFx };
 })();

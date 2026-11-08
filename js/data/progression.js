@@ -25,13 +25,13 @@ G.REGIONS = [
     id: 'steppe', name: 'Steppe des Os', age: "Âge de l'Os", maxLevel: 3,
     ground: ['#dcc89d', '#cfb787', '#e6d6b0'], speck: '#b59a68',
     pool: { prairie: 4.5, broussailles: 4.5, rocher: 3, ossuaire: 2.5, troupeau: 2.6, carcasse: 0.25, ruine: 0.4 },
-    pass: { name: 'Gué des Os blanchis', tech: 't_pistes', res: { outils: 30, peau: 40, cordes: 40 } }
+    pass: { name: 'Gué des Os blanchis', tech: 't_pistes', res: { outils: 60, peau: 80, cordes: 90 } }
   },
   {
     id: 'foret', name: 'Forêt fossile', age: 'Âge de la Résine', maxLevel: 4,
     ground: ['#b8ab82', '#a99a6f', '#c7bb93'], speck: '#7d7350',
     pool: { prairie: 4, arbre: 2.5, resineux: 3, affleurement: 3, rocher: 2, ossuaire: 1.5, troupeau: 2, carcasse: 0.25, ruine: 0.5 },
-    pass: { name: 'Col des Murmures', tech: 't_col', res: { lanternes: 40, pointes: 50, outils: 70 }, final: true }
+    pass: { name: 'Col des Murmures', tech: 't_col', res: { lanternes: 130, pointes: 150, outils: 160 }, final: true }
   }
 ];
 
@@ -113,7 +113,7 @@ G.HERITAGE = {
 G.RIGUEUR = [
   { name: 'Paisible', waves: false, mem: 0.75, desc: "Aucune attaque. Les bâtiments militaires sont masqués." },
   { name: 'Rude', waves: true, mem: 1.25, desc: "Des parasites grimpent sur la bête." },
-  { name: 'Sauvage', waves: true, mem: 1.7, hpMult: 1.5, desc: "Parasites plus nombreux et plus robustes." }
+  { name: 'Sauvage', waves: true, mem: 1.7, hpMult: 1.8, desc: "Parasites plus nombreux et plus robustes." }
 ];
 
 // Menaces.

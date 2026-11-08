@@ -38,7 +38,13 @@ G.LORE = {
     "Sur l'échine, la ligne du milieu, les lanceurs portent plus loin.",
     "Les harpons sont les seuls à attraper les troupeaux. Et il leur faut des cordes.",
     "Un grenier bien placé, c'est des porteurs qui marchent moins.",
-    "Bien nourrie, elle grandit. Une vertèbre, c'est une rangée de cases en plus !"
+    "Bien nourrie, elle grandit. Une vertèbre, c'est une rangée de cases en plus !",
+    "Un atelier qui ne manque de rien et ne déborde pas prend le rythme : +30 %. Regardez l'onglet Flux.",
+    "Un niveau de plus, c'est un bâtiment de plus au même endroit. Montez toute la chaîne, sinon elle boite.",
+    "Vous parlez en dormant, vous savez. Vous comptez. Je ne dirai rien aux autres.",
+    "Moi ? Trois Colosses. Peut-être quatre. Pourquoi, on vous a dit autre chose ?",
+    "La nuit, elle marche plus doucement. Comme quelqu'un qui ne veut pas se réveiller.",
+    "Ne regardez pas trop longtemps les arbres de la Forêt fossile. Non, je ne dirai pas pourquoi."
   ],
   end: ["C'est fini pour cette bête. Mais le troupeau se souvient. On en trouvera une autre."],
   triumph: ["Le Col des Murmures ! Jamais un Colosse n'était allé si loin. Les conteurs chanteront ça pendant mille marches."]

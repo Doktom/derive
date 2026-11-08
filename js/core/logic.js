@@ -132,6 +132,7 @@ G.logic = (function () {
     if (p.final) { endRun('triumph'); return true; }
     run.region++;
     G.meta.stats.bestRegion = Math.max(G.meta.stats.bestRegion, run.region);
+    G.saga.addXp(30);
     if (run.rig >= G.meta.maxRig && run.rig < G.RIGUEUR.length - 1) G.meta.maxRig = run.rig + 1;
     run.route = G.route.generate(run);
     run.stepDist = 0;
@@ -155,6 +156,10 @@ G.logic = (function () {
   function queueOffering() { G.run.pending.push({ kind: 'offering', options: pickN(G.OFFERINGS, 3) }); }
   function choosePending(i) {
     const run = G.run;
+    if (run.pending[0] && run.pending[0].kind === 'dream') {
+      const id = run.pending.shift().id;
+      return G.saga.choose(id, i);
+    }
     if (run.pending[0] && run.pending[0].kind === 'event') {
       const ev = G.EVENTS_BY[run.pending[0].id];
       if (!G.chronicle.canChoose(ev.choices[i])) return false;
@@ -257,6 +262,7 @@ G.logic = (function () {
       if (reason === 'triumph') { G.meta.stats.triumphs++; if (run.rig >= G.meta.maxRig && run.rig < G.RIGUEUR.length - 1) G.meta.maxRig = run.rig + 1; }
       G.meta.history.unshift({ reason, gain, region: run.region, time: Math.round(run.time), L: run.L, rig: run.rig, date: Date.now() });
       G.meta.history = G.meta.history.slice(0, 20);
+      G.saga.onEnd(reason);
     }
     if (run.botRun || G.botSim) return;
     if (!G.offlineSim) G.lore.say(reason === 'triumph' ? 'triumph' : 'end');

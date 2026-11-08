@@ -20,8 +20,8 @@ G.BUILDINGS = {
   },
   harpon: {
     name: 'Harpon', cat: 'recolte', cost: { bois: 15, os: 8, cordes: 6 }, jobs: 2, flank: true, hp: 120,
-    harpoon: { reach: 7, cd: 9, take: 14, ammo: { cordes: 0.5 } },
-    desc: "Sur un flanc. Longue portée : arrache un gros morceau toutes les 9 s. Seul moyen de chasser les troupeaux. Consomme des cordes."
+    harpoon: { reach: 7, cd: 10, take: 15, ammo: { cordes: 0.5 } },
+    desc: "Sur un flanc. Longue portée : arrache un gros morceau toutes les 10 s. Seul moyen de chasser les troupeaux. Consomme des cordes."
   },
   corderie: {
     name: 'Corderie', cat: 'atelier', cost: { bois: 12, pierre: 6 }, jobs: 1, hp: 100,
@@ -30,17 +30,17 @@ G.BUILDINGS = {
   },
   fumoir: {
     name: 'Fumoir', cat: 'atelier', cost: { bois: 15, pierre: 10 }, jobs: 2, hp: 100,
-    recipe: { in: { viande: 0.2, bois: 0.08 }, out: { vivres: 0.45 } },
+    recipe: { in: { viande: 0.2, bois: 0.1 }, out: { vivres: 0.5 } },
     desc: "Fume la viande en vivres pour les habitants."
   },
   depeceur: {
     name: 'Écorcherie', cat: 'atelier', cost: { bois: 15, os: 10 }, jobs: 2, hp: 100, tech: 't_depecage',
-    recipe: { in: { viande: 0.2 }, out: { peau: 0.12, vivres: 0.1 } },
+    recipe: { in: { viande: 0.2 }, out: { peau: 0.15, vivres: 0.1 } },
     desc: "Tire des peaux (et un peu de vivres) de la viande."
   },
   atelier: {
     name: "Atelier d'os", cat: 'atelier', cost: { bois: 15, pierre: 15 }, jobs: 2, hp: 100, tech: 't_outils',
-    recipe: { in: { os: 0.3, cordes: 0.08 }, out: { outils: 0.12 } },
+    recipe: { in: { os: 0.3, cordes: 0.1 }, out: { outils: 0.15 } },
     desc: "Taille les os en outils."
   },
   lanternier: {
@@ -50,17 +50,17 @@ G.BUILDINGS = {
   },
   forge: {
     name: 'Forge de cuivre', cat: 'atelier', cost: { pierre: 25, outils: 6 }, jobs: 2, hp: 140, tech: 't_cuivre', region: 1,
-    recipe: { in: { cuivre: 0.25, bois: 0.15 }, out: { pointes: 0.12 } },
+    recipe: { in: { cuivre: 0.25, bois: 0.15 }, out: { pointes: 0.15 } },
     desc: "Martèle le cuivre en pointes (munitions des balistes, passage du Col)."
   },
   tente: {
     name: 'Tente de peau', cat: 'vie', cost: { bois: 12, os: 4 }, hp: 90, housing: 4,
-    consume: { vivres: 0.035 },
+    consume: { vivres: 1 / 30 },
     desc: "Loge 4 habitants s'ils ont des vivres. Les niveaux demandent de la peau."
   },
   conteur: {
     name: 'Cercle des conteurs', cat: 'vie', cost: { bois: 10, os: 10 }, jobs: 2, hp: 90,
-    recipe: { in: { vivres: 0.12 }, out: { recits: 0.18 } },
+    recipe: { in: { vivres: 0.1 }, out: { recits: 0.2 } },
     desc: "Les anciens racontent : produit des récits, la monnaie de la recherche."
   },
   grenier: {
@@ -93,4 +93,6 @@ G.BUILDINGS = {
 G.LOGI = { porters: 2, charge: 2, speed: 1.5, outSec: 40, inSec: 20, minOut: 12, minIn: 4, surplus: 0.4 };
 
 // Niveaux : multiplicateurs par niveau au-delà du premier.
-G.LEVELS = { prod: 0.75, jobs: 0.5, housing: 0.5, dmg: 0.4, hp: 0.25, storage: 0.75, costBase: 1.5, costGrow: 1.9 };
+// prod = 1 : un bâtiment de niveau N vaut exactement N bâtiments (entrées ET sorties), les ratios d'une chaîne restent justes.
+// cadence : bonus de sortie maximal d'un bâtiment qui tourne sans accroc · cadUp / cadDown : secondes pour le gagner / le perdre.
+G.LEVELS = { prod: 1, jobs: 0.5, housing: 1, dmg: 0.4, hp: 0.25, storage: 1, costBase: 2, costGrow: 2, cadence: 0.3, cadUp: 45, cadDown: 12 };

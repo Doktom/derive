@@ -44,6 +44,11 @@ G.bot = (function () {
     // Choix en attente
     while (run.pending.length) {
       const p = run.pending[0];
+      if (p.kind === 'dream') {
+        G.logic.choosePending(0);
+        if (G.ui && G.ui.state.modal === 'pending') G.ui.closeModal();
+        continue;
+      }
       if (p.kind === 'event') {
         const ev = G.EVENTS_BY[p.id];
         let idx = ev.choices.findIndex(c => c.cost && G.chronicle.canChoose(c) && !c.fx.gamble);

@@ -69,6 +69,27 @@ HTML/CSS/JS sans dépendance, objet global `G`, données dans `js/data`, moteur 
 
 **Mesures du bot (V0.2, petit échantillon)** 🧪 : Paisible 2 triomphes sur 2 (51 à 54 min) ; Rude 3 triomphes sur 5 (51 à 55 min) ; Sauvage 1 sur 2. Sauvage est peut-être devenu trop accessible : à vérifier.
 
+## V0.3 — caméra libre, optimisation, information, saga 🤖
+**Caméra 3D** : rotation complète et inclinaison (clic droit ou molette + glisser, Q ou A / E, flèches, boutons sur la carte, boussole qui indique la tête). Les angles sont gardés dans `meta.settings`. Sol élargi pour couvrir toutes les vues. Clic droit corrigé : il ne pose plus de bâtiment avant d'annuler.
+
+**Optimisation** ✅ (demande du joueur)
+- **Niveaux entiers** : `G.LEVELS.prod = 1`, un niveau N vaut N bâtiments, entrées et sorties ensemble (harpons compris : ils tirent ×N de cordes). Les ratios d'une chaîne ne bougent jamais. Tentes : logent ×N et mangent ×N. Emplois +50 % par niveau seulement : monter économise des bras. Coût ×2 à chaque niveau.
+- **Ratios nets** : recettes arrondies à des valeurs lisibles par minute (corderie 18 → 9, fumoir 12 + 6 → 30, conteur 6 → 12, grue 30, harpon 15 par 10 s).
+- **Cadence** : un bâtiment sans famine ni engorgement gagne jusqu'à +30 % de sorties en 45 s et perd tout en 12 s (`b.cad`). Les entrées n'augmentent pas : c'est la récompense directe de l'équilibre.
+- **Onglet Flux** : rendement global, offre et demande par ressource, ce qu'il manque (« 0,6 × Grue »), liste cliquable des goulots.
+- Production réelle par bâtiment (`b._m`, non sauvegardée) comparée au nominal.
+
+**Information** : cartes avec entrées → sorties visibles ; fiches au survol (`js/ui/info.js`, `data-tipx`) pour bâtiments, ressources, satiété, vigueur, croissance, main-d'œuvre, vagues, allures, étapes, technologies ; aperçu de l'emplacement pendant la pose ; aperçu du niveau suivant ; bonus actifs à gauche ; Guide (commandes, bâtiments, ressources, règles).
+
+**Saga** (`js/data/saga.js`, `js/core/saga.js`) : un songe par nuit (cycle de 6 min, jamais pendant une vague). 18 chapitres en 5 livres, 5 songes d'errance, 4 fins au Col. Tout est gardé d'une bête à l'autre dans `meta.saga`.
+- **Le secret** : le Monde Ocre est la peau de la Première, couchée, qui rêve que les Colosses marchent. Les parasites boivent ce qu'elle se rappelle. Tic est sa dernière pensée. Les Murmures sont les Veilleurs d'avant.
+- **RPG** : Éveil (niveaux, éclats à placer), trois Voix (Os, Chair, Brume) avec bonus par point et dons à 3, 6 et 9, six compagnons recrutés en songe (trois à vos côtés, niveaux 1 à 5, « Veiller » coûte des récits).
+- **Fins** : Le Nom (Os), Le Matin (Chair), Le Rêveur (Brume), toutes à 3 points, ou Le Passage (silence). Le Livre V s'ouvre après une première fin.
+
+**Rééquilibrage** : passes relevées (Gué : 60 outils, 80 peaux, 90 cordes ; Col : 130 lanternes, 150 pointes, 160 outils), vagues plus fortes (taille 3 + 1,5 n, PV ×1,14 par vague, Sauvage ×1,8).
+
+**Mesures du bot (V0.3, petit échantillon)** 🧪 : Paisible 2 triomphes sur 2 (52 à 72 min) ; Rude 2 sur 4 (53 à 56 min, 2 morts à 29 et 49 min) ; Sauvage 0 sur 3 (morts vers 39 min). Le bot choisit toujours la première option des songes et n'optimise pas ses chaînes.
+
 ## Points ouverts ❓ / pistes 💡
 - 🧪 Rythme et lisibilité pour un joueur humain (le bot est naïf).
 - 💡 V1 : espèces de Colosse (Carapace, Arpenteur, Baleine des dunes, Bélier), régions 3 à 5 (Mer de verre, Terres d'orage, Cimetière), Légende ✨ et Totems (maîtrise ×n), pillards volants, passerelles et tyroliennes, Grand Envol, biomes infinis au-delà de la Brume.

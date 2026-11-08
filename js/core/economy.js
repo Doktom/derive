@@ -4,6 +4,18 @@ G.economy = (function () {
 
   function lm(b) { return 1 + L().prod * (b.level - 1); }
   function veinMult(b) { return G.beast.isVein(b.x, b.y) ? 1.4 : 1; }
+  // Bonus globaux, partagés par le tick et par les fiches d'information (js/ui/info.js).
+  function craftMult(r) {
+    let m = Math.max(0.1, 1 + (G.M.craft || 0));
+    if (r === 'vivres') m *= 1 + (G.M.vivres || 0);
+    if (r === 'recits') m *= 1 + (G.M.recits || 0);
+    return m;
+  }
+  function harvestMult() { return Math.max(0.1, 1 + (G.M.harvest || 0)); }
+  function useMult(r) { return r === 'vivres' ? 1 + (G.M.vivresUse || 0) : 1; }
+  // Cadence : le bonus de sortie d'un bâtiment qui tourne sans accroc.
+  function cadBonus() { return L().cadence + (G.M.cadence || 0); }
+  function cadMult(b) { return 1 + cadBonus() * (b.cad || 0); }
 
   // ---- Grille ----
   function rebuildGrid() {
@@ -33,6 +45,13 @@ G.economy = (function () {
       f.p = f.p * 0.85 + (a.p / accT) * 0.15;
       f.c = f.c * 0.85 + (a.c / accT) * 0.15;
       a.p = 0; a.c = 0;
+    }
+    // Production réelle de chaque bâtiment (moyenne glissante d'une dizaine de secondes).
+    for (const b of G.run.buildings) {
+      const m = b._m;
+      if (!m) continue;
+      for (const r in m.r) if (!(r in m.a)) m.a[r] = 0;
+      for (const r in m.a) { m.r[r] = (m.r[r] || 0) * 0.9 + (m.a[r] / accT) * 0.1; m.a[r] = 0; }
     }
     accT = 0;
   }
@@ -97,6 +116,8 @@ G.economy = (function () {
 
   function gain(b, r, amt) {
     if (amt <= 0) return;
+    const m = b._m || (b._m = { a: {}, r: {} });
+    m.a[r] = (m.a[r] || 0) + amt;
     if (G.RESOURCES[r].abstract) { G.run.recits += amt; count(r, amt); return; }
     b.out[r] = (b.out[r] || 0) + amt;
     count(r, amt);
@@ -125,11 +146,11 @@ G.economy = (function () {
       b._eff = eff; b._st = b.paused ? 'pause' : '';
       // Hors des vagues, les habitants retapent peu à peu ce qui est abîmé (1 % par seconde).
       if (!run.enemies.length) { const mh = G.logic.maxHp(b); if (b.hp < mh) b.hp = Math.min(mh, b.hp + mh * 0.01 * dt); }
-      const k = lm(b) * veinMult(b);
+      const k = lm(b) * veinMult(b) * cadMult(b);
 
       if (d.consume && b.type !== 'nuque') {
         for (const r in d.consume) {
-          const need = d.consume[r] * lm(b) * (r === 'vivres' ? 1 + (M.vivresUse || 0) : 1) * dt;
+          const need = d.consume[r] * lm(b) * useMult(r) * dt;
           const have = b.inp[r] || 0;
           if (have >= need) { b.inp[r] = have - need; count(r, -need); b._fed = Math.min(1, (b._fed === undefined ? 1 : b._fed) + dt / 4); }
           else { b._fed = Math.max(0, (b._fed === undefined ? 1 : b._fed) - dt / 12); b._st = 'faim'; }
@@ -146,12 +167,7 @@ G.economy = (function () {
         for (const r in d.recipe.out) if (!G.RESOURCES[r].abstract && (b.out[r] || 0) >= outCap(b, r)) { f = 0; b._st = 'plein'; }
         if (f > 0) {
           for (const r in d.recipe.in) { const c = d.recipe.in[r] * lm(b) * dt * f; b.inp[r] -= c; count(r, -c); }
-          for (const r in d.recipe.out) {
-            let m = k * Math.max(0.1, 1 + (M.craft || 0));
-            if (r === 'vivres') m *= 1 + (M.vivres || 0);
-            if (r === 'recits') m *= 1 + (M.recits || 0);
-            gain(b, r, d.recipe.out[r] * dt * f * m);
-          }
+          for (const r in d.recipe.out) gain(b, r, d.recipe.out[r] * dt * f * k * craftMult(r));
         }
       }
 
@@ -166,7 +182,7 @@ G.economy = (function () {
           b.target = t ? t.did : null;
         }
         if (t) {
-          const rate = d.harvest.rate * k * Math.max(0.1, 1 + (M.harvest || 0)) * eff;
+          const rate = d.harvest.rate * k * harvestMult() * eff;
           const space = G.RESOURCES[t.res].abstract ? Infinity : outSpace(b, t.res);
           const take = Math.min(rate * dt, t.amt, space);
           if (space <= 0.01) { b._st = 'plein'; b.target = null; }
@@ -179,30 +195,38 @@ G.economy = (function () {
         if (b.cd <= 0) {
           const ammo = d.harpoon.ammo;
           let ok = true;
-          for (const r in ammo) if ((b.inp[r] || 0) < ammo[r]) ok = false;
-          if (!ok) { b._st = 'munitions'; b.cd = 0; }
+          const shot = lm(b); // un harpon de niveau N tire N fois plus de cordes et rapporte N fois plus
+          for (const r in ammo) if ((b.inp[r] || 0) < ammo[r] * shot) ok = false;
+          if (!ok) { b._st = 'munitions'; b.cd = 0; b._hold = run.time + 1; }
           else {
             const c = inRangeDeposits(b, reachOf(b), x => (!b.filter || x.res === b.filter) && (G.RESOURCES[x.res].abstract || outSpace(b, x.res) > 2));
             const pref = x => (G.DEPOSITS[x.type].harpoonOnly ? 1000 : 0) + (G.DEPOSITS[x.type].big ? 500 : 0) + (x.res === 'recits' ? 300 : 0) + x.amt;
             const t = c.sort((a, z) => pref(z) - pref(a))[0];
             if (t) {
               const space = G.RESOURCES[t.res].abstract ? Infinity : outSpace(b, t.res);
-              const take = Math.min(d.harpoon.take * k * Math.max(0.1, 1 + (M.harvest || 0)), t.amt, space);
+              const take = Math.min(d.harpoon.take * k * harvestMult(), t.amt, space);
               t.amt -= take; gain(b, t.res, take);
-              for (const r in ammo) { b.inp[r] -= ammo[r]; count(r, -ammo[r]); }
+              for (const r in ammo) { b.inp[r] -= ammo[r] * shot; count(r, -ammo[r] * shot); }
               b.cd = d.harpoon.cd;
               if (!G.offlineSim) run.fx.push({ k: 'harpon', x1: b.x + 0.5, y1: b.y + 0.5, did: t.did, x2: t.x, y2: t.y, t: run.time, life: 0.6 });
-            } else { b.cd = 0.5; if (!b._st) b._st = 'vide'; }
+            } else { b.cd = 0.5; b._hold = run.time + 1; if (!b._st) b._st = 'vide'; }
           }
         }
+      }
+
+      // Cadence : tourner sans famine ni engorgement fait prendre le rythme, un accroc le fait vite perdre.
+      if (d.recipe || d.harvest || d.harpoon) {
+        const steady = eff >= 0.98 && !b._st && run.time >= (b._hold || 0);
+        b.cad = steady ? Math.min(1, (b.cad || 0) + dt / L().cadUp) : Math.max(0, (b.cad || 0) - dt / L().cadDown);
       }
     }
     G.logistics.update(dt);
     G.beast.tick(dt);
     G.world.tick(dt, G.beast.speed() * dt);
     G.chronicle.update();
+    G.saga.update();
     flushFlow(dt);
   }
 
-  return { rebuildGrid, at, count, tick, outCap, storeCap, wants, jobs, housing, lm, veinMult, reachOf, inRangeDeposits };
+  return { rebuildGrid, at, count, tick, outCap, storeCap, wants, jobs, housing, lm, veinMult, reachOf, inRangeDeposits, craftMult, harvestMult, useMult, cadBonus, cadMult };
 })();

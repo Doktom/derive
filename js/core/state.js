@@ -95,6 +95,7 @@ G.state = (function () {
   // Complète une partie ou une méta issues d'une sauvegarde plus ancienne.
   function migrate(run, meta) {
     if (meta) meta.maxRig = Math.max(1, meta.maxRig || 0);
+    if (meta) G.saga.ensure(meta);
     if (!run) return;
     run.timed = run.timed || [];
     run.infLv = run.infLv || {};
@@ -107,7 +108,7 @@ G.state = (function () {
     if (!G.meta || G.wiping) return;
     try {
       // _grid référence tous les bâtiments : inutile (recalculée) et elle doublerait la sauvegarde.
-      localStorage.setItem(G.SAVE_KEY, JSON.stringify({ v: G.SAVE_V, meta: G.meta, run: G.run && G.run.demo ? null : G.run, savedAt: Date.now() }, (k, v) => k === '_grid' ? undefined : v));
+      localStorage.setItem(G.SAVE_KEY, JSON.stringify({ v: G.SAVE_V, meta: G.meta, run: G.run && G.run.demo ? null : G.run, savedAt: Date.now() }, (k, v) => (k === '_grid' || k === '_m' || k === '_rel') ? undefined : v));
     } catch (e) { console.warn('Sauvegarde impossible', e); }
   }
 

@@ -2,7 +2,7 @@
 G.mods = (function () {
   const BASE = {
     harvest: 0, reach: 0, speed: 0, drain: 0, gallopDrain: 0, recits: 0, dmg: 0, porters: 0, porterSpeed: 0,
-    charge: 0, growth: 0, tentPop: 0, vivresUse: 0, vivres: 0, craft: 0, vigMax: 0, maxLevel: 0, tickDrain: 0
+    charge: 0, growth: 0, tentPop: 0, vivresUse: 0, vivres: 0, craft: 0, vigMax: 0, maxLevel: 0, tickDrain: 0, cadence: 0
   };
 
   function add(M, mods, n) {
@@ -26,6 +26,7 @@ G.mods = (function () {
       for (const t of run.timed || []) add(M, t.mods);
       for (const id in run.infLv || {}) if (G.INFINITE[id]) add(M, G.INFINITE[id].mods, run.infLv[id]);
     }
+    if (meta && G.saga) for (const m of G.saga.modsList()) add(M, m);
     G.M = M;
     return M;
   }

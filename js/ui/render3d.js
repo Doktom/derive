@@ -4,7 +4,8 @@
 G.render = (function () {
   const T = window.THREE;
   const PX = 30;               // pixels par unité au zoom 1
-  const AZ = 0.56, EL = 0.66;  // azimut et élévation de la caméra
+  const AZ0 = 0.56, EL0 = 0.66;     // azimut et élévation de la vue par défaut
+  const EL_MIN = 0.42, EL_MAX = 1.4; // de la vue rasante à la vue presque de dessus
   const BASE = 3, DOME = 1.5;  // hauteur du bord du dos, bombé de la carapace
   const P = 32, CELL = 32 / 13; // période du sol (répétition en Z) et taille de ses facettes
   const cam = { x: 5.5, y: 6, z: 1 };
@@ -19,9 +20,17 @@ G.render = (function () {
   let builtKey = '', groundRegion = -1, overlayKey = '', runSeed = null;
   const bObj = new Map(), dObj = new Map();
   let walkPhase = 0, lastT = 0, shakeUntil = 0;
-  const camDir = new T.Vector3(Math.sin(AZ) * Math.cos(EL), Math.sin(EL), Math.cos(AZ) * Math.cos(EL));
-  const R = { x: Math.cos(AZ), z: -Math.sin(AZ) };
-  const Fg = { x: -Math.sin(AZ), z: -Math.cos(AZ) };
+  // Angles de la caméra : az et el sont affichés, azT et elT sont les cibles vers lesquelles ils glissent.
+  let az = AZ0, el = EL0, azT = AZ0, elT = EL0, needle = null;
+  const camDir = new T.Vector3(), R = { x: 1, z: 0 }, Fg = { x: 0, z: -1 };
+  function setAngles() {
+    camDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+    R.x = Math.cos(az); R.z = -Math.sin(az);
+    Fg.x = -Math.sin(az); Fg.z = -Math.cos(az);
+    needle = needle || document.getElementById('view-needle');
+    if (needle) needle.style.transform = 'rotate(' + az + 'rad)'; // la tête du Colosse à l'écran
+  }
+  setAngles();
 
   function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
   const clamp = G.util.clamp;
@@ -472,7 +481,8 @@ G.render = (function () {
     const k = new Kit();
     const hAt = (x, z) => Math.sin(x * 0.37 + 1) * 0.18 + Math.sin(z / P * 6.283 * 2 + x * 0.2) * 0.16 + Math.sin(z / P * 6.283 * 3 - x * 0.5 + 2) * 0.1 - 0.25;
     const cols = reg.ground.map(c => new T.Color(c));
-    const X0 = -56, Z0 = -82, nx = 50, nz = 65;
+    // Assez large pour rester sous la vue quand on tourne la caméra ou qu'on la baisse.
+    const X0 = -112, Z0 = -144, nx = 92, nz = 113;
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
       const x = X0 + i * CELL, z = Z0 + j * CELL;
       const v = (a, b) => [x + a * CELL, hAt(x + a * CELL, z + b * CELL), z + b * CELL];
@@ -486,11 +496,11 @@ G.render = (function () {
     }
     // Décor : cailloux et touffes, répétés à chaque période.
     const speck = new T.Color(reg.speck).getHex();
-    for (let p = 0; p < 5; p++) {
-      for (let i = 0; i < 90; i++) {
-        const x = X0 + hash(i * 1.7) * 122, z = Z0 + p * P + hash(i * 2.9) * P;
+    for (let p = 0; p < 9; p++) {
+      for (let i = 0; i < 110; i++) {
+        const x = X0 + hash(i * 1.7) * 226, z = Z0 + p * P + hash(i * 2.9) * P;
         if (i % 3) k.add(cone(0.1, 0.3 + hash(i) * 0.2, 3), speck, { p: [x, hAt(x, z) + 0.14, z], jitter: 0.1 });
-        else k.add(dod(0.1 + hash(i) * 0.2), 0x8a8071, { p: [x, hAt(x, z) + 0.05, z], s: [1.2, 0.7, 1] });
+        else k.add(oct(0.1 + hash(i) * 0.2), 0x8a8071, { p: [x, hAt(x, z) + 0.05, z], s: [1.2, 0.7, 1] });
       }
     }
     const m = new T.Mesh(k.build(), matV);
@@ -518,7 +528,9 @@ G.render = (function () {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
     scene = new T.Scene();
-    camera = new T.OrthographicCamera(-10, 10, 10, -10, 1, 500);
+    camera = new T.OrthographicCamera(-10, 10, 10, -10, 1, 700);
+    const saved = G.meta && G.meta.settings;
+    if (saved && saved.camAz !== undefined) { az = azT = saved.camAz; el = elT = clamp(saved.camEl, EL_MIN, EL_MAX); setAngles(); }
     matV = new T.MeshLambertMaterial({ vertexColors: true });
     matRuin = new T.MeshLambertMaterial({ vertexColors: true, color: 0x6f6a62 });
     matVein = new T.MeshBasicMaterial({ color: 0xcd5240 });
@@ -605,7 +617,7 @@ G.render = (function () {
     const hw = Wp / (2 * PX * cam.z), hh = Hp / (2 * PX * cam.z);
     camera.left = -hw; camera.right = hw; camera.top = hh; camera.bottom = -hh;
     camera.updateProjectionMatrix();
-    const D = 150;
+    const D = 220;
     const k = 1 / (PX * cam.z);
     camera.position.set(cam.x + camDir.x * D + R.x * sx * k, BASE + camDir.y * D, cam.y + camDir.z * D + R.z * sx * k + sy * k);
     camera.lookAt(cam.x + R.x * sx * k, BASE, cam.y + R.z * sx * k + sy * k);
@@ -792,7 +804,9 @@ G.render = (function () {
         m.rotation.y = hash(d.did) * 6.28;
         depositsG.add(m); dObj.set(d.did, m);
       }
-      const f = (G.DEPOSITS[d.type].big ? 1.25 : 1) * (0.5 + 0.5 * Math.sqrt(Math.max(0, d.amt) / d.max));
+      // Les gisements grandissent à l'horizon et rétrécissent au loin : la caméra libre verrait sinon leur apparition.
+      const edge = clamp(Math.min((d.y + 8) / 2.5, (run.L + 8 - d.y) / 2.5), 0.01, 1);
+      const f = edge * (G.DEPOSITS[d.type].big ? 1.25 : 1) * (0.5 + 0.5 * Math.sqrt(Math.max(0, d.amt) / d.max));
       m.position.set(d.x, -0.08, d.y);
       m.scale.setScalar(f);
       if (ui.hoverDep === d.did) {
@@ -963,6 +977,11 @@ G.render = (function () {
     const run = G.run;
     if (!renderer || !run) return;
     const t = now / 1000, dt = Math.min(0.1, t - (lastT || t)); lastT = t;
+    if (Math.abs(azT - az) > 1e-4 || Math.abs(elT - el) > 1e-4) {
+      const s = 1 - Math.exp(-dt * 11);
+      az += (azT - az) * s; el += (elT - el) * s;
+      setAngles();
+    }
     const speedK = G.ui ? G.ui.speedMult() : 1;
     const sp = G.beast.speed(), amp = Math.min(1, sp / 0.12) * (speedK > 0 ? 1 : 0);
     walkPhase += dt * sp * 22 * speedK;
@@ -1018,11 +1037,34 @@ G.render = (function () {
 
   function shake() { shakeUntil = performance.now() + 800; }
   function pan(dx, dy) {
-    const k = 1 / (PX * cam.z), g = 1 / Math.sin(EL);
-    cam.x += -R.x * dx * k + Fg.x * dy * k * g;
-    cam.y += -R.z * dx * k + Fg.z * dy * k * g;
+    const k = 1 / (PX * cam.z), g = 1 / Math.sin(el);
+    cam.x = clamp(cam.x - R.x * dx * k + Fg.x * dy * k * g, -40, 52);
+    cam.y = clamp(cam.y - R.z * dx * k + Fg.z * dy * k * g, -48, (G.run ? G.run.L : 12) + 48);
     updateCamera(0, 0);
   }
+  // ---- Rotation de la caméra ----
+  function remember() {
+    if (!G.meta) return;
+    G.meta.settings.camAz = ((azT % 6.283185) + 6.283185) % 6.283185;
+    G.meta.settings.camEl = elT;
+  }
+  // Glisser : les angles suivent la souris sans inertie.
+  function orbit(dx, dy) {
+    azT -= dx * 0.0075;
+    elT = clamp(elT + dy * 0.005, EL_MIN, EL_MAX);
+    az = azT; el = elT;
+    setAngles(); updateCamera(0, 0); remember();
+  }
+  // Boutons et clavier : par crans, en glissant jusqu'à la cible.
+  function rotate(a) { azT += a; remember(); }
+  function tilt(a) { elT = clamp(elT + a, EL_MIN, EL_MAX); remember(); }
+  function resetView() {
+    const a = ((az - AZ0 + Math.PI) % 6.283185 + 6.283185) % 6.283185 - Math.PI + AZ0, e = el;
+    az = azT = AZ0; el = elT = EL0; setAngles();
+    fit();
+    az = a; el = e; setAngles(); remember(); // on recadre sur la vue finale, puis on y glisse par le plus court
+  }
+  function angles() { return { az, el, azT, elT }; }
   function zoomAt(px, py, f) {
     const a = screenToWorld(px, py);
     cam.z = clamp(cam.z * f, 0.3, 3.2);
@@ -1039,5 +1081,5 @@ G.render = (function () {
     return { x: (v.x + 1) / 2 * Wp, y: (1 - v.y) / 2 * Hp };
   }
 
-  return { init, resize, fit, draw, screenToTile, screenToWorld, shake, pan, zoomAt, cam, dayDark, info, tileToScreen };
+  return { init, resize, fit, draw, screenToTile, screenToWorld, shake, pan, zoomAt, cam, dayDark, info, tileToScreen, orbit, rotate, tilt, resetView, angles };
 })();

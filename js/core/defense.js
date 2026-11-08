@@ -4,13 +4,16 @@ G.defense = (function () {
   let nextEid = 1, retarget = 0;
 
   function wavesOn() { return G.RIGUEUR[G.run.rig].waves; }
+  // Taille et robustesse de la vague n (partagées avec la fiche d'information).
+  function waveSize(n, run) { return Math.round((3 + n * 1.5 + run.region * 2) * (G.RIGUEUR[run.rig].hpMult ? 1.3 : 1)); }
+  function waveHp(n, run) { return Math.pow(1.14, n) * (1 + 0.4 * run.region) * (G.RIGUEUR[run.rig].hpMult || 1); }
 
   function startWave(forceBoss) {
     const run = G.run, w = run.wave, rig = G.RIGUEUR[run.rig];
     w.n++;
     const side = w.side || ['left', 'right', 'rear'][Math.floor(Math.random() * 3)];
-    const n = Math.round((3 + w.n * 1.2 + run.region * 2) * (rig.hpMult ? 1.3 : 1));
-    const hpm = Math.pow(1.11, w.n) * (1 + 0.4 * run.region) * (rig.hpMult || 1);
+    const n = G.defense.waveSize(w.n, run);
+    const hpm = G.defense.waveHp(w.n, run);
     for (let i = 0; i < n; i++) spawnEnemy('tique', side, hpm);
     if (forceBoss || w.n % 5 === 0) { spawnEnemy('chef', side, hpm); if (!G.offlineSim) G.lore.say('boss'); }
     w.active = true; w.start = run.time; w.side = null;
@@ -169,5 +172,5 @@ G.defense = (function () {
     if (run.fx.length > 200) run.fx.splice(0, run.fx.length - 200);
   }
 
-  return { update, startWave, wavesOn, SIDES };
+  return { update, startWave, wavesOn, waveSize, waveHp, SIDES };
 })();
